@@ -1,0 +1,81 @@
+name: rrhh
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: rrhh_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: constructora
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3310:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - rrhh_network
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: ../docker/app.dockerfile
+    container_name: rrhh_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+    depends_on:
+      - db
+    networks:
+      - rrhh_network
+
+  webserver:
+    image: nginx:alpine
+    container_name: rrhh_webserver
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ./backend:/var/www
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - rrhh_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    container_name: rrhh_frontend
+    restart: unless-stopped
+    ports:
+      - "3100:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - webserver
+    networks:
+      - rrhh_network
+
+  face_service:
+    build:
+      context: ./face_service
+      dockerfile: Dockerfile
+    container_name: rrhh_face_service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./face_service:/app
+    networks:
+      - rrhh_network
+
+networks:
+  rrhh_network:
+    driver: bridge
+
+volumes:
+  db_data:
